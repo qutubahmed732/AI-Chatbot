@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, User, Mic, Sparkles } from 'lucide-react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Send, Mic, Sparkles } from 'lucide-react';
 import Markdown from "react-markdown";
 import { useUser } from "@clerk/clerk-react";
 import MessageSkeleton from './MessageSkeleton';
@@ -8,6 +7,7 @@ import MessageSkeleton from './MessageSkeleton';
 export default function ChatInterface() {
 
   const { user } = useUser();
+  console.log(user);
 
 
   const [isListening, setIsListening] = useState(false);
@@ -27,9 +27,11 @@ export default function ChatInterface() {
       if (!user) return;
 
       try {
-        const response = await fetch(`/api/messages/${user.id}`);
-        const data = await response.json();
+        const response = await fetch(`http://localhost:5000/api/messages/${user.id}`);
 
+        if (!response.ok) throw new Error("Network response was not ok");
+
+        const data = await response.json();
 
         const formattedHistory = data.map((m: any) => ({
           id: m._id,
@@ -54,45 +56,48 @@ export default function ChatInterface() {
     if (!input.trim() || isLoading) return;
 
     const currentInput = input;
-    const userMsgData = { userId: user?.id, text: currentInput, role: 'user' };
-
-    setMessages((prev) => [...prev, { id: Date.now(), role: 'user', content: currentInput }]);
     setInput('');
     setIsLoading(true);
 
+    // UI update
+    setMessages((prev) => [...prev, { id: Date.now(), role: 'user', content: currentInput }]);
+
     try {
+      // A. User ka message MongoDB mein save karein
       await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userMsgData)
+        body: JSON.stringify({ userId: user?.id, text: currentInput, role: 'user' })
       });
 
-      const genAI = new GoogleGenerativeAI(String(import.meta.env.VITE_GEMINI_API));
-      const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-
+      // B. History format karein (Sirf backend ko bhejne ke liye)
       const chatHistory = messages.slice(-10).map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.content }],
       }));
 
-      const chatSession = model.startChat({
-        history: chatHistory,
-      });
-
-      const result = await chatSession.sendMessage(currentInput);
-      const aiText = result.response.text();
-
-      const aiMsgData = { userId: user?.id, text: aiText, role: 'assistant' };
-      await fetch('http://localhost:5000/api/messages', {
+      // C. APNE BACKEND SE JAWAB LEIN (API Key yahan se gayab!)
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(aiMsgData)
+        body: JSON.stringify({ message: currentInput, history: chatHistory })
       });
 
+      const data = await response.json();
+      const aiText = data.text;
+
+      // D. AI ka jawab MongoDB mein save karein
+      await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id, text: aiText, role: 'assistant' })
+      });
+
+      // Final UI update
       setMessages((prev) => [...prev, { id: Date.now() + 1, role: 'assistant', content: aiText }]);
 
     } catch (error) {
-      console.error("Data save karne mein masla:", error);
+      console.error("Masla ho gaya:", error);
     } finally {
       setIsLoading(false);
     }
@@ -139,9 +144,9 @@ export default function ChatInterface() {
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-700' : 'bg-white border text-indigo-600'
+              <div className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-700' : 'bg-white border text-indigo-600'
                 }`}>
-                {msg.role === 'user' ? <User size={20} /> : <Sparkles size={20} />}
+                {msg.role === 'user' ? <img className='text-sm' src={user?.imageUrl} alt={user?.fullName + " avatar"} /> : <Sparkles size={20} />}
               </div>
               <div className={`p-4 rounded-2xl text-left text-sm leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
                 }`}>

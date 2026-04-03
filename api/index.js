@@ -3,7 +3,9 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';;
+import { fileURLToPath } from 'url';
+
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // ES Modules mein __dirname nikalne ka tarika
 const __filename = fileURLToPath(import.meta.url);
@@ -14,7 +16,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app = express();
 app.use(cors({
-  origin: 'https://ai-chatbot-blue-six.vercel.app/',
+  origin: ['http://localhost:5173', 'https://ai-chatbot-blue-six.vercel.app'],
   methods: ['GET', 'POST'],
   credentials: true
 }));
@@ -42,6 +44,10 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', messageSchema);
 
+const genAI = new GoogleGenerativeAI(String(process.env.VITE_GEMINI_API));
+const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+
+
 // Routes
 app.post('/api/messages', async (req, res) => {
   try {
@@ -62,6 +68,27 @@ app.get('/api/messages/:userId', async (req, res) => {
   }
 });
 
-// app.listen(5000, () => console.log(`🚀 Server running on port 5000`));
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message, history } = req.body;
+
+    // Safety: Agar history user se shuru nahi ho rahi, toh usay filter karein
+    const validHistory = history.length > 0 && history[0].role === 'model'
+      ? history.slice(1)
+      : history;
+
+    const chatSession = model.startChat({ history: validHistory });
+    const result = await chatSession.sendMessage(message);
+    const aiText = result.response.text();
+
+    res.json({ text: aiText });
+  } catch (error) {
+    console.error("Gemini Error:", error);
+    res.status(500).json({ error: "AI respond nahi kar saka" });
+  }
+});
+
+
+app.listen(5000, () => console.log(`🚀 Server running on port 5000`));
 
 export default app;

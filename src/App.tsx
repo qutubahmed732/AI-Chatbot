@@ -3,7 +3,12 @@ import { Bot } from "lucide-react";
 import ChatInterface from "./Components/ChatInterface.tsx";
 import AuthPage from "./Components/AuthPage.tsx";
 
+
+
 export default function App() {
+
+  
+
   return (
     <div className="min-h-screen bg-white">
       {/* Universal Navbar */}
