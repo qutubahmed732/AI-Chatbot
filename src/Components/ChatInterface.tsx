@@ -22,14 +22,12 @@ export default function ChatInterface() {
     (bottomRef.current as HTMLDivElement | null)?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-
   useEffect(() => {
     const fetchChatHistory = async () => {
       if (!user) return;
 
       try {
-        const response = await fetch(`${API_URL}/api/messages/${user.id}`);
+        const response = await fetch(`/api/messages/${user.id}`);
         const data = await response.json();
 
 
@@ -63,7 +61,7 @@ export default function ChatInterface() {
     setIsLoading(true);
 
     try {
-      await fetch(`${API_URL}/api/messages`, {
+      await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userMsgData)

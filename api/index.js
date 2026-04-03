@@ -14,7 +14,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app = express();
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'https://ai-chatbot-blue-six.vercel.app/',
   methods: ['GET', 'POST'],
   credentials: true
 }));
