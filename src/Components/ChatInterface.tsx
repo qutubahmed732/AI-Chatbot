@@ -7,7 +7,6 @@ import MessageSkeleton from './MessageSkeleton';
 export default function ChatInterface() {
 
   const { user } = useUser();
-  console.log(user);
 
 
   const [isListening, setIsListening] = useState(false);
