@@ -21,12 +21,16 @@ export default function ChatInterface() {
     (bottomRef.current as HTMLDivElement | null)?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const baseURL = window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : "https://ai-chatbot-blue-six.vercel.app/";
+
   useEffect(() => {
     const fetchChatHistory = async () => {
       if (!user) return;
 
       try {
-        const response = await fetch(`/api/messages/${user.id}`);
+        const response = await fetch(`${baseURL}/api/messages/${user.id}`);
 
         if (!response.ok) throw new Error("Network response was not ok");
 
@@ -61,9 +65,11 @@ export default function ChatInterface() {
     // UI update
     setMessages((prev) => [...prev, { id: Date.now(), role: 'user', content: currentInput }]);
 
+
+
     try {
       // A. User ka message MongoDB mein save karein
-      await fetch('/api/messages', {
+      await fetch(`${baseURL}/api/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user?.id, text: currentInput, role: 'user' })
@@ -76,7 +82,7 @@ export default function ChatInterface() {
       }));
 
       // C. APNE BACKEND SE JAWAB LEIN (API Key yahan se gayab!)
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${baseURL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: currentInput, history: chatHistory })
@@ -86,7 +92,7 @@ export default function ChatInterface() {
       const aiText = data.text;
 
       // D. AI ka jawab MongoDB mein save karein
-      await fetch('/api/messages', {
+      await fetch(`${baseURL}/api/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user?.id, text: aiText, role: 'assistant' })
