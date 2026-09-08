@@ -1,32 +1,38 @@
 import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
-import { Bot } from "lucide-react";
+import { Bot, Sparkles } from "lucide-react";
 import ChatInterface from "./Components/ChatInterface.tsx";
 import AuthPage from "./Components/AuthPage.tsx";
 
-
-
 export default function App() {
-
   return (
-    <div className="min-h-screen bg-white">
-      {/* Universal Navbar */}
-      <nav className="h-16 border-b flex items-center justify-between px-6 bg-white sticky top-0 z-50">
-        <div className="flex items-center gap-2 font-bold text-xl text-slate-800">
-          <Bot className="text-indigo-600 w-6 h-6" />
-          <span>Qutub Ahmed</span>
+    <div className="app-shell">
+      <nav className="app-navbar">
+        <div className="brand">
+          <div className="brand-mark" aria-hidden="true">
+            <Bot size={21} />
+          </div>
+          <div className="brand-copy">
+            <span className="brand-name">Qutub AI</span>
+            <span className="brand-status"><span /> Intelligent assistant</span>
+          </div>
         </div>
 
         <SignedIn>
-          <UserButton />
+          <div className="nav-user">
+            <span className="nav-greeting">Your workspace</span>
+            <UserButton appearance={{ elements: { userButtonAvatarBox: "user-avatar" } }} />
+          </div>
         </SignedIn>
+
+        <SignedOut>
+          <div className="nav-badge"><Sparkles size={14} /> AI assistant</div>
+        </SignedOut>
       </nav>
 
-      {/* Conditional Rendering Logic */}
-      <main>
+      <main className="app-main">
         <SignedOut>
           <AuthPage />
         </SignedOut>
-
         <SignedIn>
           <ChatInterface />
         </SignedIn>
