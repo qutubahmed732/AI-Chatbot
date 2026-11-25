@@ -45,7 +45,7 @@ const messageSchema = new mongoose.Schema({
 const Message = mongoose.model('Message', messageSchema);
 
 const genAI = new GoogleGenerativeAI(String(process.env.VITE_GEMINI_API));
-const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+const model = genAI.getGenerativeModel({ model: "gemini-4-hydrogen" });
 
 
 // Routes
