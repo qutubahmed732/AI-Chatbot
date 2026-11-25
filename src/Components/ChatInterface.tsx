@@ -16,7 +16,7 @@ export default function ChatInterface() {
 
   const baseURL = window.location.hostname === "localhost"
     ? "http://localhost:5000"
-    : "https://ai-chatbot-blue-six.vercel.app/";
+    : "https://ai-chatbot-blue-six.vercel.app";
 
   useEffect(() => {
     const fetchChatHistory = async () => {
