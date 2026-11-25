@@ -70,21 +70,51 @@ app.get('/api/messages/:userId', async (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, history = [] } = req.body;
 
-    // Safety: Agar history user se shuru nahi ho rahi, toh usay filter karein
-    const validHistory = history.length > 0 && history[0].role === 'model'
-      ? history.slice(1)
-      : history;
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: "Message required hai" });
+    }
 
-    const chatSession = model.startChat({ history: validHistory });
+    const safeHistory = Array.isArray(history) ? history : [];
+
+    // Alternating user/model turns ensure karein aur history 'user' se shuru ho
+    const normalizedHistory = [];
+    for (const item of safeHistory) {
+      if (!item || !item.role || !Array.isArray(item.parts) || item.parts.length === 0) {
+        continue;
+      }
+      if (normalizedHistory.length === 0 && item.role !== 'user') {
+        continue;
+      }
+      const last = normalizedHistory[normalizedHistory.length - 1];
+      if (last && last.role === item.role) {
+        // Same role consecutive aaye toh pichlay turn ke text mein merge kar dein
+        last.parts[0].text += `\n${item.parts[0].text || ''}`;
+      } else {
+        normalizedHistory.push({
+          role: item.role,
+          parts: [{ text: String(item.parts[0].text || '') }]
+        });
+      }
+    }
+
+    // Chat history ka aakhri turn 'model' hona chahiye kyunki naya 'message' abhi 'user' send karega
+    if (normalizedHistory.length > 0 && normalizedHistory[normalizedHistory.length - 1].role === 'user') {
+      normalizedHistory.pop();
+    }
+
+    const chatSession = model.startChat({ history: normalizedHistory });
     const result = await chatSession.sendMessage(message);
     const aiText = result.response.text();
 
     res.json({ text: aiText });
   } catch (error) {
     console.error("Gemini Error:", error);
-    res.status(500).json({ error: "AI respond nahi kar saka" });
+    res.status(500).json({
+      error: "AI respond nahi kar saka",
+      details: error?.message || "Unknown error"
+    });
   }
 });
 

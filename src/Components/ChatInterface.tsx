@@ -47,35 +47,54 @@ export default function ChatInterface() {
     setMessages((prev) => [...prev, { id: Date.now(), role: 'user', content: currentInput }]);
 
     try {
-      await fetch(`${baseURL}/api/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id, text: currentInput, role: 'user' })
-      });
-
-      const chatHistory = messages.slice(-10).map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }],
-      }));
+      // History bhejte waqt initial greeting (id === 1) ya khali messages exclude karein
+      const chatHistory = messages
+        .filter((m) => m.id !== 1 && m.content?.trim())
+        .slice(-10)
+        .map((m) => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.content }],
+        }));
 
       const response = await fetch(`${baseURL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: currentInput, history: chatHistory })
+        body: JSON.stringify({ message: currentInput, history: chatHistory }),
       });
+
       const data = await response.json();
-      if (!response.ok || !data.text) throw new Error(data.error || 'AI response failed');
+      if (!response.ok || !data.text) {
+        throw new Error(data.details || data.error || 'AI response failed');
+      }
 
-      await fetch(`${baseURL}/api/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id, text: data.text, role: 'assistant' })
-      });
+      // Dono messages DB mein save karein
+      await Promise.all([
+        fetch(`${baseURL}/api/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user?.id, text: currentInput, role: 'user' }),
+        }),
+        fetch(`${baseURL}/api/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user?.id, text: data.text, role: 'assistant' }),
+        }),
+      ]);
 
-      setMessages((prev) => [...prev, { id: Date.now() + 1, role: 'assistant', content: data.text }]);
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now() + 1, role: 'assistant', content: data.text },
+      ]);
     } catch (error) {
       console.error("Masla ho gaya:", error);
-      setMessages((prev) => [...prev, { id: Date.now() + 1, role: 'assistant', content: 'Sorry, abhi response lene mein masla aa gaya. Dobara try karein.' }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: 'Sorry, abhi response lene mein masla aa gaya. Dobara try karein.',
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
